@@ -1,0 +1,1 @@
+# Helper functions (e.g., Booking.com API handler)
