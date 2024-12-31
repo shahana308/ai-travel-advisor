@@ -1,5 +1,6 @@
 # FastAPI server setup
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
+from services.booking import fetch_accomodations
 
 app = FastAPI()
 
@@ -18,3 +19,7 @@ def get_itenerary(destination: str):
             {"day": 2, "activity": f"Visit the famous landmarks in {destination}."},
         ]
     }
+
+@app.get("/accomodations")
+def get_accomodations(location = Query(..., description = "The city of accomodations"), check_in = Query(..., description = "check-in date (YYYY-MM-DD)"), check_out = Query(..., description = "check-in date (YYYY-MM-DD)")):
+    return
