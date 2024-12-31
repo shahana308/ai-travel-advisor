@@ -1,6 +1,6 @@
 # FastAPI server setup
 from fastapi import FastAPI, Query
-from services.booking import fetch_accomodations, Query
+from app.services.booking import fetch_accomodations
 from pydantic import BaseModel
 from typing import List
 
@@ -36,6 +36,16 @@ def get_itenerary(
         ][:duration]
     }
 
-@app.get("/accomodations")
-def get_accomodations(location = Query(..., description = "The city of accomodations"), check_in = Query(..., description = "check-in date (YYYY-MM-DD)"), check_out = Query(..., description = "check-in date (YYYY-MM-DD)")):
-    return
+# booking.com accomodation route
+@app.get("/accomodations/")
+def get_accomodations(
+    location = Query(..., description = "The city of accomodations"), 
+    checkin_date = Query(..., description = "check-in date (YYYY-MM-DD)"), 
+    checkout_date = Query(..., description = "check-in date (YYYY-MM-DD)")
+):
+    data = fetch_accomodations(location, checkin_date, checkout_date)
+    print(data)
+    if data:
+        return {"accomadation" : data.get("data", [])}
+    return {"error": "Unable to fetch accommodations"}
+

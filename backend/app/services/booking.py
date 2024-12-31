@@ -1,22 +1,22 @@
 import os
-import requests
 from dotenv import load_dotenv
+import requests
 
 load_dotenv()
 
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
-API_HOST = "booking-com.p.rapidapi.com"
+API_HOST = "booking-com15.p.rapidapi.com"
 
 def fetch_accomodations(location, checkin_date, checkout_date):
     dest_id = get_dest_id(location)
     if not dest_id:
         return {"error": f"Could not find destination ID for location: {location}"}
 
-    url = f"https://{API_HOST}/v1/hotels/search"
+    url = f"https://{API_HOST}/api/v1/hotels/searchHotels"
     query = {
-        "checkin_date": checkin_date,
-        "checkout_date": checkout_date,
-        "dest_type": "city",
+        "arrival_date": checkin_date,
+        "departure_date": checkout_date,
+        "search_type": "city",
         "locale": "en-us",
         "dest_id": dest_id, 
         "units": "metric",
@@ -31,16 +31,16 @@ def fetch_accomodations(location, checkin_date, checkout_date):
 
     response = requests.get(url, headers = headers, params = query)
 
-    if response.status == 200:
+    if response.status_code == 200:
         return response.json()
     else: 
         print(f"Error: {response.status_code}, {response.text}")
         return None
 
 def get_dest_id(location: str):
-    url = f"https://{API_HOST}/v1/hotels/locations"
+    url = f"https://{API_HOST}/api/v1/hotels/searchDestination"
     query = {
-        "name": location,
+        "query": location,
         "locale": "en-us"
     }
     headers = {
@@ -49,9 +49,13 @@ def get_dest_id(location: str):
     }
 
     response = requests.get(url, headers=headers, params=query)
+    print(f"Location API Response: {response.status_code}, {response.text}")  
+
     if response.status_code == 200:
-        locations = response.json()
+        response_data = response.json()
+        locations = response_data.get("data", [])
         if locations:
-            return locations[0].get("dest_id")  
+            return locations[0].get("dest_id") 
+
     print(f"Error fetching dest_id: {response.status_code}, {response.text}")
     return None
