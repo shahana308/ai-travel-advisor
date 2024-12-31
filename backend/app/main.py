@@ -15,6 +15,11 @@ class ItineraryResponse(BaseModel):
     duration: int
     itinerary: List[Activity]
 
+class AccommodationRequest(BaseModel):
+    location: str
+    checkin_date: str
+    checkout_date: str   
+
 # Basic route
 @app.get('/')
 def read_root():
@@ -37,7 +42,7 @@ def get_itenerary(
     }
 
 # booking.com accomodation route
-@app.get("/accomodations/")
+@app.get("/accomodations/", response_model=AccommodationRequest)
 def get_accomodations(
     location = Query(..., description = "The city of accomodations"), 
     checkin_date = Query(..., description = "check-in date (YYYY-MM-DD)"), 
