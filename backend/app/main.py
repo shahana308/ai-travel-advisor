@@ -1,70 +1,47 @@
 # FastAPI server setup
 from fastapi import FastAPI, Query, HTTPException
 from app.services.booking import fetch_accomodations
-from app.services.wikivoyage_scraper import scrape_city, fetch_page, parse_page
 from pydantic import BaseModel
+from pymongo import MongoClient
 from typing import List, Optional
+import os
 
 app = FastAPI()
 
-class Activity(BaseModel):
-    day: int
-    activity: str
+username = os.getenv("MONGO_USERNAME")
+password = os.getenv("MONGO_PASSWORD")
+cluster_name = "cluster0"
+uri = f"mongodb+srv://{username}:{password}@{cluster_name}.6c59c.mongodb.net/?retryWrites=true&w=majority"
+client = MongoClient(uri)
 
-class ItineraryResponse(BaseModel):
-    destination: str
-    duration: int
-    itinerary: List[Activity]
-
-class AccommodationRequest(BaseModel):
-    location: str
-    checkin_date: str
-    checkout_date: str   
-
-class WikiVoyageResponse(BaseModel):
-    title: str
-    sections: dict
+db = client["travel_advisor"]
+collection = db["cities"]
 
 # Basic route
 @app.get('/')
 def read_root():
     return {"message": "Welcome to the AI Travel Advisor API!"}
 
-# Itinerary route
-@app.get("/itinerary/", response_model=ItineraryResponse)
-def get_itinerary(
-    destination: str = Query(..., description="The destination for the itinerary"), 
-    duration: int = Query(..., ge=1, le=10, description="Number of days (1 - 10 days)")
-):
-    return {
-        "destination": destination, 
-        "duration": duration, 
-        "itinerary": [
-            {"day": 1, "activity": f"Explore the best spots in {destination}."},
-            {"day": 2, "activity": f"Visit the famous landmarks in {destination}."},
-            {"day": 3, "activity": f"Enjoy local food and culture in {destination}."},
-        ][:duration]
-    }
+@app.get("/cities")
+async def get_all_cities():
+    """Fetch all city names."""
+    cities = collection.find({}, {"_id": 0, "title": 1})
+    return list(cities)
 
-# Booking.com accommodation route
-@app.get("/accomodations/", response_model=AccommodationRequest)
-def get_accommodations(
-    location: str = Query(..., description="The city for accommodations"), 
-    checkin_date: str = Query(..., description="Check-in date (YYYY-MM-DD)"), 
-    checkout_date: str = Query(..., description="Check-out date (YYYY-MM-DD)")
-):
-    data = fetch_accomodations(location, checkin_date, checkout_date)
-    if data:
-        return {"accomodations": data.get("data", [])}
-    return {"error": "Unable to fetch accommodations"}
+@app.get("/cities/{city_name}")
+async def get_city_data(city_name: str):
+    """Fetch detailed data for a specific city."""
+    city = collection.find_one({"title": city_name}, {"_id": 0})
+    if city:
+        return city
+    return {"error": "City not found"}
 
-# WikiVoyage scraper route
-@app.get("/wikivoyage/", response_model=WikiVoyageResponse)
-def get_wikivoyage_guide(city: str = Query(..., description="City to scrape from WikiVoyage")):
-    try:
-        # Scrape the page content
-        html_content = fetch_page(city)
-        title, sections = parse_page(html_content)
-        return {"title": title, "sections": sections}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching data for {city}: {str(e)}")
+@app.get("/search")
+async def search_city(city_name: str, section: str = None):
+    """Search within a specific section of a city."""
+    city = collection.find_one({"title": city_name}, {"_id": 0})
+    if city and section:
+        return city["sections"].get(section, {"error": f"No data found for section '{section}'"})
+    elif city:
+        return city["sections"]
+    return {"error": f"City '{city_name}' not found"}
